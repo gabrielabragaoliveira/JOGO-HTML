@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treinamento de Emergência</title>
+    
+    <!-- Biblioteca para os confetes -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Biblioteca para Arrastar e Soltar (Mobile e Desktop) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <style>
+        /* Cores globais Verde e Branco */
+        :root {
+            --verde-escuro: #1b5e20;
+            --verde-principal: #2e7d32;
+            --verde-claro: #e8f5e9;
+            --branco: #ffffff;
+            --vermelho-erro: #ffcccc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--verde-claro);
+            color: var(--verde-escuro);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s;
+        }
+
+        /* Classe ativada ao errar */
+        body.tela-erro {
+            background-color: var(--vermelho-erro);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* IMAGENS RESPONSIVAS */
+        .img-capa {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            object-fit: cover;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* TELAS */
+        #menu-iniciar, #tela-fim {
+            text-align: center;
+            background: var(--branco);
+            padding: 30px 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(46, 125, 50, 0.2);
+            border: 3px solid var(--verde-principal);
+        }
+
+        #tela-jogo, #tela-fim {
+            display: none;
+        }
+
+        #menu-iniciar h1, #tela-fim h2 {
+            color: var(--verde-escuro);
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        /* CARTINHA (TELA DO JOGO) */
+        .cartinha {
+            background: var(--branco);
+            padding: 25px 15px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(46, 125, 50, 0.2);
+            border: 2px solid var(--verde-principal);
+            position: relative;
+        }
+
+        /* Animação de Tremer */
+        .tremer {
+            animation: tremerAnimacao 0.4s;
+        }
+
+        @keyframes tremerAnimacao {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        .pergunta-titulo {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--verde-principal);
+        }
+
+        /* OPÇÕES DE ARRASTAR */
+        #lista-opcoes {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            background: var(--verde-claro);
+            margin: 10px 0;
+            padding: 12px;
+            border: 2px solid var(--verde-principal);
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+            cursor: grab;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        .item:active {
+            cursor: grabbing;
+            transform: scale(1.02);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .item strong {
+            color: var(--verde-escuro);
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        /* Ícone de arraste (Drag Handle) */
+        .drag-handle {
+            font-size: 20px;
+            color: var(--verde-principal);
+            margin-right: 15px;
+            cursor: grab;
+        }
+
+        .texto-item {
+            flex-grow: 1;
+        }
+
+        /* Classe fantasma aplicada pelo SortableJS durante o arraste */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #c8e6c9;
+        }
+
+        /* BOTÕES GERAIS */
+        .btn-acao {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: var(--verde-principal);
+            color: var(--branco);
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            text-transform: uppercase;
+            transition: 0.3s;
+        }
+
+        .btn-acao:hover {
+            background: var(--verde-escuro);
+        }
+
+        #btn-proxima {
+            display: none;
+            background: #1565c0;
+        }
+
+        #btn-proxima:hover {
+            background: #0d47a1;
+        }
+
+        #status-msg {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 16px;
+            min-height: 20px;
+        }
+
+        .progresso {
+            text-align: center;
+            margin-bottom: 10px;
+            color: var(--verde-principal);
+            font-weight: bold;
+        }
+
+        /* Ajustes Mobile */
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            #menu-iniciar h1, #tela-fim h2 { font-size: 20px; }
+            .item { font-size: 13px; padding: 10px; }
+            .btn-acao { padding: 12px; font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- MENU INICIAR -->
+        <div id="menu-iniciar">
+            <!-- Imagem de Capa 1 -->
+            <img src="https://raw.githubusercontent.com/gabrielabragaoliveira/JOGO-HTML/05de773c2b5e540560c247e6444a296ddb2f63f6/vai.jpg" alt="Treinamento de Segurança" class="img-capa">
+            
+            <h1>Sem tempo, alguém pode se ferir!!</h1>
+            <p style="margin-bottom: 20px; font-size: 15px;">Teste seus conhecimentos em situações de emergência.<br><strong>Arraste os itens</strong> para organizá-los na ordem correta (1º ao último).</p>
+            <button class="btn-acao" onclick="iniciarJogo()">Iniciar Treinamento</button>
+        </div>
+
+        <!-- TELA DO JOGO -->
+        <div id="tela-jogo">
+            <div class="progresso" id="progresso-texto"></div>
+            
+            <div class="cartinha" id="cartinha-jogo">
+                <div class="pergunta-titulo" id="pergunta-texto"></div>
+                
+                <!-- Lista Arrastável -->
+                <ul id="lista-opcoes"></ul>
+            </div>
+
+            <h3 id="status-msg"></h3>
+            <button class="btn-acao" id="btn-verificar" onclick="verificarOrdem()">Verificar Resposta</button>
+            <button class="btn-acao" id="btn-proxima" onclick="proximaPergunta()">Próxima Situação ➔</button>
+        </div>
+
+        <!-- TELA FINAL -->
+        <div id="tela-fim">
+            <!-- Imagem de Capa 2 -->
+            <img src="https://raw.githubusercontent.com/gabrielabragaoliveira/JOGO-HTML/05de773c2b5e540560c247e6444a296ddb2f63f6/i.png" alt="Parabéns" class="img-capa">
+            
+            <h2 style="color: var(--verde-principal);">PARABÉNS! 🎉</h2>
+            <p style="font-size: 16px; margin-top: 15px; margin-bottom: 25px;">
+                Seu raciocínio está rápido!! Você agora está mais preparado(a) para emergências.
+            </p>
+            <button class="btn-acao" onclick="voltarAoInicio()">Voltar para a Página Inicial</button>
+        </div>
+
+    </div>
+
+    <script>
+        // Banco de Dados das 13 Perguntas com textos corrigidos
+        const bancoPerguntas = [
+            {
+                pergunta: "Um colega seu foi picado por um animal peçonhento. O que fazer?",
+                opcoes: [
+                    "<strong>Mantenha a calma e afaste a vítima do local:</strong> Garanta que ela esteja em segurança e evite contato com o animal.",
+                    "<strong>Acione o atendimento médico imediatamente:</strong> Ligue para o serviço de emergência ou encaminhe a vítima ao posto de saúde mais próximo.",
+                    "<strong>Não faça procedimentos caseiros:</strong> Não corte, perfure ou aperte o local da picada, nem faça torniquetes. Se possível, identifique o animal à distância para auxiliar o atendimento."
+                ]
+            },
+            {
+                pergunta: "O carro à sua frente acabou de perder o controle e sair da pista, colidindo contra a defensa. Você está bem e quer ajudar. O que fazer?",
+                opcoes: [
+                    "<strong>Pare em segurança e sinalize o local:</strong> Reduza a velocidade, estacione fora da pista e ligue o pisca-alerta.",
+                    "<strong>Acione o socorro:</strong> Ligue para o CCO.",
+                    "<strong>Ajude sem se colocar em risco:</strong> Aproxime-se apenas se for seguro, verifique o estado das vítimas e aguarde a chegada do resgate sem movimentá-las."
+                ]
+            },
+            {
+                pergunta: "Infelizmente, você foi atropelado por uma moto. O que fazer?",
+                opcoes: [
+                    "<strong>Avalie sua condição e procure um local seguro:</strong> Se conseguir se mover sem agravar possíveis lesões, afaste-se do trânsito e permaneça em segurança.",
+                    "<strong>Peça ajuda e acione o socorro:</strong> Ligue para o SAMU (192), Bombeiros (193) ou solicite ajuda de pessoas próximas.",
+                    "<strong>Evite movimentos desnecessários e aguarde atendimento:</strong> Se houver dor intensa, tontura ou suspeita de lesões, permaneça imóvel e aguarde a chegada do socorro. Mesmo que pareça um acidente leve, procure avaliação médica."
+                ]
+            },
+            {
+                pergunta: "Durante o trabalho, um colega se cortou com um caco de vidro. Como agir?",
+                opcoes: [
+                    "<strong>Garanta a segurança e avalie o ferimento:</strong> Afaste-se dos cacos de vidro e verifique a gravidade do corte.",
+                    "<strong>Controle o sangramento:</strong> Pressione o local com um pano limpo ou gaze até o sangramento diminuir.",
+                    "<strong>Procure atendimento, se necessário:</strong> Se o corte for profundo, continuar sangrando ou houver suspeita de vidro no ferimento, procure atendimento médico imediatamente."
+                ]
+            },
+            {
+                pergunta: "Enquanto realizava atividades ao ar livre, um colega passou mal devido ao calor excessivo. Como agir?",
+                opcoes: [
+                    "<strong>Leve o colega para um local fresco e sombreado:</strong> Afaste-o da exposição ao sol e interrompa imediatamente a atividade.",
+                    "<strong>Ajude a resfriar o corpo:</strong> Ofereça água, se ele estiver consciente, e afrouxe roupas apertadas.",
+                    "<strong>Acione o socorro, se necessário:</strong> Se houver desmaio, confusão mental, convulsões ou piora dos sintomas, procure atendimento médico imediatamente."
+                ]
+            },
+            {
+                pergunta: "Durante uma atividade em perímetro urbano, um colega foi atacado e mordido por um cachorro. Como agir?",
+                opcoes: [
+                    "<strong>Afaste a vítima do animal e garanta a segurança do local:</strong> Evite novos ataques e mantenha as demais pessoas afastadas.",
+                    "<strong>Cuide do ferimento:</strong> Lave a área atingida com água e sabão, sem esfregar excessivamente o local.",
+                    "<strong>Procure atendimento médico imediatamente:</strong> Mesmo que o ferimento pareça leve, a vítima deve ser avaliada para verificar a necessidade de vacina antirrábica, antitetânica e outros cuidados."
+                ]
+            },
+            {
+                pergunta: "Um colega escorregou em um talude e sofreu uma queda. O que fazer primeiro?",
+                opcoes: [
+                    "<strong>Garanta a segurança do local:</strong> Verifique se não há risco de novos deslizamentos ou quedas antes de se aproximar.",
+                    "<strong>Avalie o estado da vítima:</strong> Verifique se ela está consciente, respirando e se apresenta sinais de lesões graves.",
+                    "<strong>Acione o socorro e evite movimentá-la:</strong> Em caso de suspeita de fraturas ou lesões na coluna, mantenha a vítima imóvel e aguarde atendimento especializado."
+                ]
+            },
+            {
+                pergunta: "Um princípio de incêndio começou em um veículo de apoio da obra. Qual deve ser sua primeira ação?",
+                opcoes: [
+                    "<strong>Pare a atividade e afaste as pessoas da área:</strong> Garanta a segurança da equipe e mantenha todos longe do veículo.",
+                    "<strong>Acione o plano de emergência:</strong> Comunique imediatamente o responsável pela frente de serviço e solicite apoio.",
+                    "<strong>Combata o fogo apenas se for seguro:</strong> Utilize o extintor adequado somente se o incêndio estiver no início e sem risco para sua integridade. Caso contrário, afaste-se e aguarde os Bombeiros."
+                ]
+            },
+            {
+                pergunta: "Você encontrou um cabo elétrico caído próximo à frente de serviço. Como proceder?",
+                opcoes: [
+                    "<strong>Mantenha distância e isole a área:</strong> Considere o cabo energizado e impeça a aproximação de pessoas e veículos.",
+                    "<strong>Não toque no cabo nem em objetos próximos:</strong> Evite qualquer contato até que a situação seja avaliada por profissionais habilitados.",
+                    "<strong>Comunique imediatamente a ocorrência:</strong> Acione o responsável pela obra e a concessionária de energia para que o local seja liberado com segurança."
+                ]
+            },
+            {
+                pergunta: "Em caso de enchente, o que fazer?",
+                opcoes: [
+                    "<strong>Procure um local seguro e elevado:</strong> Afaste-se imediatamente de áreas alagadas, cursos d’água e pontos com risco de inundação.",
+                    "<strong>Interrompa as atividades e siga as orientações de emergência:</strong> Comunique a situação ao responsável pela equipe e mantenha todos em segurança.",
+                    "<strong>Nunca atravesse áreas alagadas:</strong> Não tente caminhar ou dirigir em locais cobertos pela água, pois a correnteza pode ser mais forte do que parece."
+                ]
+            },
+            {
+                pergunta: "Um colega sofreu uma picada de escorpião durante a limpeza da camada vegetal. Como agir?",
+                opcoes: [
+                    "<strong>Mantenha a calma e afaste a vítima do local:</strong> Garanta que não haja risco de novas picadas.",
+                    "<strong>Lave o local da picada com água e sabão:</strong> Mantenha o membro em repouso e evite procedimentos caseiros.",
+                    "<strong>Procure atendimento médico imediatamente:</strong> Acione o socorro ou encaminhe a vítima à unidade de saúde mais próxima para avaliação e tratamento adequado."
+                ]
+            },
+            {
+                pergunta: "Ao manusear ferramentas enferrujadas, você sofreu um corte na mão. O que fazer?",
+                opcoes: [
+                    "<strong>Interrompa a atividade e lave o ferimento:</strong> Limpe o local com água corrente e sabão para reduzir o risco de infecção.",
+                    "<strong>Controle o sangramento e proteja o corte:</strong> Faça compressão com gaze ou pano limpo e cubra o ferimento com um curativo adequado.",
+                    "<strong>Procure atendimento médico:</strong> Informe o ocorrido ao responsável e verifique a necessidade de reforço da vacina antitetânica e outros cuidados médicos."
+                ]
+            },
+            {
+                pergunta: "Uma colega escorregou em um piso molhado e não conseguiu se levantar devido à dor. Como você pode ajudar?",
+                opcoes: [
+                    "<strong>Garanta a segurança do local:</strong> Sinalize a área molhada para evitar novas quedas e mantenha outras pessoas afastadas.",
+                    "<strong>Avalie a situação sem movimentar a vítima:</strong> Converse com sua colega, verifique se ela está consciente e identifique possíveis sinais de lesão.",
+                    "<strong>Acione o socorro e aguarde o atendimento:</strong> Não tente levantá-la se houver dor intensa ou suspeita de fratura. Solicite ajuda especializada e mantenha a vítima confortável até a chegada do atendimento."
+                ]
+            }
+        ];
+
+        let perguntasSorteadas = [];
+        let perguntaAtualIndex = 0;
+        const totalPerguntasNoJogo = 3;
+        let sortableInstance;
+
+        // Inicia o Jogo
+        function iniciarJogo() {
+            // Sorteia 3 perguntas do banco de 13
+            perguntasSorteadas = [...bancoPerguntas]
+                .sort(() => Math.random() - 0.5)
+                .slice(0, totalPerguntasNoJogo);
+
+            document.getElementById('menu-iniciar').style.display = 'none';
+            document.getElementById('tela-fim').style.display = 'none';
+            document.getElementById('tela-jogo').style.display = 'block';
+            
+            carregarPergunta(0);
+        }
+
+        // Carrega a Pergunta na Tela
+        function carregarPergunta(index) {
+            perguntaAtualIndex = index;
+            
+            // Atualiza Textos
+            document.getElementById('pergunta-texto').innerText = perguntasSorteadas[index].pergunta;
+            document.getElementById('progresso-texto').innerText = `Situação ${index + 1} de ${totalPerguntasNoJogo}`;
+            
+            // Reseta Tela
+            document.getElementById('status-msg').innerText = "";
+            document.getElementById('btn-verificar').style.display = 'block';
+            document.getElementById('btn-proxima').style.display = 'none';
+            document.body.classList.remove('tela-erro');
+            document.getElementById('cartinha-jogo').classList.remove('tremer');
+
+            // Prepara a lista bagunçada
+            let corretas = perguntasSorteadas[index].opcoes;
+            let ordemAtual = [...corretas].sort(() => Math.random() - 0.5);
+
+            // Evita que caia já ordenado
+            if(JSON.stringify(ordemAtual) === JSON.stringify(corretas)) {
+                ordemAtual.push(ordemAtual.shift());
+            }
+
+            renderizarLista(ordemAtual);
+        }
+
+        // Monta os Itens Arrastáveis e inicializa o SortableJS
+        function renderizarLista(itens) {
+            const listaDiv = document.getElementById('lista-opcoes');
+            listaDiv.innerHTML = ''; 
+
+            itens.forEach(texto => {
+                const li = document.createElement('li');
+                li.className = 'item';
+
+                // Ícone de arraste
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '↕';
+
+                // Texto da opção
+                const divTexto = document.createElement('div');
+                divTexto.className = 'texto-item';
+                divTexto.innerHTML = texto;
+
+                li.appendChild(dragHandle);
+                li.appendChild(divTexto);
+                listaDiv.appendChild(li);
+            });
+
+            // Ativa o Drag and Drop (SortableJS)
+            if(sortableInstance) {
+                sortableInstance.destroy();
+            }
+            sortableInstance = new Sortable(listaDiv, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                handle: '.item', // Permite arrastar clicando em qualquer lugar do item
+                onEnd: function () {
+                    // Limpa avisos de erro quando o usuário move algo
+                    document.body.classList.remove('tela-erro');
+                    document.getElementById('status-msg').innerText = "";
+                }
+            });
+        }
+
+        // Verifica o gabarito pegando a ordem atual da tela
+        function verificarOrdem() {
+            const corretas = perguntasSorteadas[perguntaAtualIndex].opcoes;
+            const itensVisuais = document.querySelectorAll('#lista-opcoes .texto-item');
+            let acertou = true;
+            
+            // Compara os elementos da tela com a matriz original
+            itensVisuais.forEach((divTexto, index) => {
+                if (divTexto.innerHTML !== corretas[index]) {
+                    acertou = false;
+                }
+            });
+
+            const msg = document.getElementById('status-msg');
+            const cartinha = document.getElementById('cartinha-jogo');
+
+            // Remove a classe tremer para poder aplicar de novo se necessário
+            cartinha.classList.remove('tremer');
+            void cartinha.offsetWidth; // Reflow forçado
+
+            if (acertou) {
+                // SUCESSO
+                document.body.classList.remove('tela-erro');
+                msg.innerHTML = "✅ Excelente! Ordem correta.";
+                msg.style.color = "var(--verde-principal)";
+                
+                // Desativa o drag and drop para não bagunçar
+                sortableInstance.option("disabled", true);
+
+                // Dispara Confetes
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#2e7d32', '#ffffff', '#4caf50']
+                });
+
+                // Troca botões
+                document.getElementById('btn-verificar').style.display = 'none';
+                document.getElementById('btn-proxima').style.display = 'block';
+
+            } else {
+                // ERRO
+                msg.innerHTML = "❌ Ordem incorreta. Arraste para corrigir e tente de novo!";
+                msg.style.color = "#d32f2f";
+                
+                // Aplica efeitos de erro
+                document.body.classList.add('tela-erro');
+                cartinha.classList.add('tremer');
+            }
+        }
+
+        function proximaPergunta() {
+            if (perguntaAtualIndex + 1 < totalPerguntasNoJogo) {
+                carregarPergunta(perguntaAtualIndex + 1);
+            } else {
+                // Fim de jogo
+                document.getElementById('tela-jogo').style.display = 'none';
+                document.getElementById('tela-fim').style.display = 'block';
+                
+                // Confetes da Vitória!
+                confetti({ particleCount: 400, spread: 120, origin: { y: 0.5 } });
+            }
+        }
+
+        function voltarAoInicio() {
+            document.body.classList.remove('tela-erro');
+            document.getElementById('tela-fim').style.display = 'none';
+            document.getElementById('menu-iniciar').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
